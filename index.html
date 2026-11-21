@@ -307,7 +307,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
   </div>
 </main>
 
-<div class="footer">LOW REACTOR INTEGRITY- SUBCARGO VOL.2</div>
+<div class="footer">All songs are copyrighted (except subcargo vol. 1) for commercial use unless purchased</div>
 
 <script>
 // ---------- Moving background ----------
@@ -346,6 +346,7 @@ const BANDS = 16;
 let audioCtx = null, analyser = null, freqData = null;
 const bands = new Array(BANDS).fill(0);
 let level = 0;                             // overall bass punch, 0 to 1
+let kick = 0, prevLevel = 0;               // sudden bass hits (drum beats) show up here
 
 const bandEdges = [0];
 for (let i = 1; i <= BANDS; i++) {
@@ -392,6 +393,11 @@ function updateLevels(dt) {
     bands[i] += (target - bands[i]) * (1 - Math.exp(-dt * rate));
   }
   level = (bands[0] + bands[1] + bands[2] + bands[3]) / 4;
+
+  // A sudden jump in the bass counts as a beat: it spikes, then dies away quickly
+  const rise = Math.max(0, level - prevLevel);
+  prevLevel = level;
+  kick = Math.min(1, kick * Math.exp(-dt * 6) + rise * 6);
 }
 
 function makeDots() {
@@ -406,7 +412,9 @@ function makeDots() {
       radius: MIN_RADIUS + size * size * (MAX_RADIUS - MIN_RADIUS),   // mostly small, a few big
       alpha: 0.15 + Math.random() * 0.4,
       twinkle: Math.random() * Math.PI * 2,
-      band: Math.floor(Math.random() * BANDS)   // which slice of the music this dot reacts to
+      band: Math.floor(Math.random() * BANDS),  // which slice of the music this dot reacts to
+      side: Math.random() < 0.5 ? -1 : 1,       // which way this dot gets pushed sideways by the beat
+      angle: 0
     });
   }
 }
@@ -415,6 +423,7 @@ function stepDots(dt, amount) {
   const margin = 24;
   for (const d of dots) {
     const angle = flowAngle(d.x, d.y);
+    d.angle = angle;
     d.x += (Math.cos(angle) * d.speed + DRIFT_SPEED * 0.6) * amount * dt;
     d.y += (Math.sin(angle) * d.speed + DRIFT_SPEED * 0.3) * amount * dt;
 
@@ -460,21 +469,26 @@ function drawBackground() {
     const py = (((d.y - scrollY) % wrapH) + wrapH) % wrapH - margin;
 
     const glow = 0.75 + 0.25 * Math.sin(phase * 2 + d.twinkle);   // gentle shimmer
-    const pulse = 0.5 * level + 0.5 * bands[d.band];              // how hard the music is hitting this dot
-    const radius = d.radius * (1 + pulse * 1.2);
-    const alpha = Math.min(1, d.alpha * glow * (1 + pulse * 1.2));
+    const pulse = Math.min(1.3, 0.5 * level + 0.5 * bands[d.band] + kick * 0.3);   // how hard the music is hitting this dot
+    const radius = d.radius * (1 + pulse * 2.0);
+    const alpha = Math.min(1, d.alpha * glow * (1 + pulse * 1.8));
+
+    // The music also shoves each dot: sideways to its path, with a bit of push along it
+    const shove = pulse * 18;
+    const px = d.x + Math.cos(d.angle + Math.PI / 2) * d.side * shove + Math.cos(d.angle) * pulse * 8;
+    const dy = Math.sin(d.angle + Math.PI / 2) * d.side * shove + Math.sin(d.angle) * pulse * 8;
 
     // Soft halo on the bigger dots, and on any dot the music is hitting hard
     if (d.radius > 2.2 || pulse > 0.5) {
       ctx2d.globalAlpha = Math.min(1, alpha * 0.3 + pulse * 0.15);
       ctx2d.beginPath();
-      ctx2d.arc(d.x, py, radius * 2.4, 0, Math.PI * 2);
+      ctx2d.arc(px, py + dy, radius * 2.4, 0, Math.PI * 2);
       ctx2d.fill();
     }
 
     ctx2d.globalAlpha = alpha;
     ctx2d.beginPath();
-    ctx2d.arc(d.x, py, radius, 0, Math.PI * 2);
+    ctx2d.arc(px, py + dy, radius, 0, Math.PI * 2);
     ctx2d.fill();
   }
   ctx2d.globalAlpha = 1;
@@ -491,7 +505,7 @@ function animateBackground(now) {
   if (bgVelocity > 0.002) {
     phase += FLOW_SPEED * bgVelocity * dt;
     drift += DRIFT_SPEED * bgVelocity * dt;
-    stepDots(dt, bgVelocity * (1 + level * 0.8));   // dots surge on the bass
+    stepDots(dt, bgVelocity * (1 + level * 2 + kick * 2.5));   // dots surge on the bass and on beats
     drawBackground();
   }
 
