@@ -339,6 +339,61 @@ function flowAngle(x, y) {
   return a * 1.1;                          // roughly -4.4 to 4.4 radians
 }
 
+// ---------- Listening to the music ----------
+// The song is routed through an analyser so the dots can react to it. Each dot follows its own
+// slice of the sound (bass to treble), plus the overall bass, so they pulse in different ways.
+const BANDS = 16;
+let audioCtx = null, analyser = null, freqData = null;
+const bands = new Array(BANDS).fill(0);
+let level = 0;                             // overall bass punch, 0 to 1
+
+const bandEdges = [0];
+for (let i = 1; i <= BANDS; i++) {
+  const e = Math.max(bandEdges[i - 1] + 1, Math.round(Math.pow(128, i / BANDS)));
+  bandEdges.push(Math.min(e, 128));
+}
+
+// Called when a song is played (needs a click first, which is why it lives there)
+function hookAudio(audio) {
+  // Browsers mute audio that's analysed from a local file:// page, so only do it on a real site
+  if (location.protocol === "file:") return;
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.6;
+      analyser.connect(audioCtx.destination);
+      freqData = new Uint8Array(analyser.frequencyBinCount);
+    }
+    if (!audio._hooked) {
+      audioCtx.createMediaElementSource(audio).connect(analyser);
+      audio._hooked = true;
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch (error) {
+    console.error("Couldn't analyse the audio:", error);
+  }
+}
+
+function updateLevels(dt) {
+  const listening = analyser && bgTarget === 1;
+  if (listening) analyser.getByteFrequencyData(freqData);
+
+  for (let i = 0; i < BANDS; i++) {
+    let target = 0;
+    if (listening) {
+      let sum = 0;
+      for (let k = bandEdges[i]; k < bandEdges[i + 1]; k++) sum += freqData[k];
+      target = Math.min(1, (sum / (bandEdges[i + 1] - bandEdges[i])) / 255 * 1.3);
+    }
+    // Rises fast, falls slowly, so it feels like a pulse rather than flicker
+    const rate = target > bands[i] ? 30 : 6;
+    bands[i] += (target - bands[i]) * (1 - Math.exp(-dt * rate));
+  }
+  level = (bands[0] + bands[1] + bands[2] + bands[3]) / 4;
+}
+
 function makeDots() {
   const count = Math.max(80, Math.min(900, Math.round(bgW * bgH / AREA_PER_DOT)));
   dots = [];
@@ -350,7 +405,8 @@ function makeDots() {
       speed: 10 + Math.random() * 22,      // each dot drifts at its own pace
       radius: MIN_RADIUS + size * size * (MAX_RADIUS - MIN_RADIUS),   // mostly small, a few big
       alpha: 0.15 + Math.random() * 0.4,
-      twinkle: Math.random() * Math.PI * 2
+      twinkle: Math.random() * Math.PI * 2,
+      band: Math.floor(Math.random() * BANDS)   // which slice of the music this dot reacts to
     });
   }
 }
@@ -404,19 +460,21 @@ function drawBackground() {
     const py = (((d.y - scrollY) % wrapH) + wrapH) % wrapH - margin;
 
     const glow = 0.75 + 0.25 * Math.sin(phase * 2 + d.twinkle);   // gentle shimmer
-    const alpha = d.alpha * glow;
+    const pulse = 0.5 * level + 0.5 * bands[d.band];              // how hard the music is hitting this dot
+    const radius = d.radius * (1 + pulse * 1.2);
+    const alpha = Math.min(1, d.alpha * glow * (1 + pulse * 1.2));
 
-    // Soft halo on the bigger dots
-    if (d.radius > 2.2) {
-      ctx2d.globalAlpha = alpha * 0.3;
+    // Soft halo on the bigger dots, and on any dot the music is hitting hard
+    if (d.radius > 2.2 || pulse > 0.5) {
+      ctx2d.globalAlpha = Math.min(1, alpha * 0.3 + pulse * 0.15);
       ctx2d.beginPath();
-      ctx2d.arc(d.x, py, d.radius * 2.4, 0, Math.PI * 2);
+      ctx2d.arc(d.x, py, radius * 2.4, 0, Math.PI * 2);
       ctx2d.fill();
     }
 
     ctx2d.globalAlpha = alpha;
     ctx2d.beginPath();
-    ctx2d.arc(d.x, py, d.radius, 0, Math.PI * 2);
+    ctx2d.arc(d.x, py, radius, 0, Math.PI * 2);
     ctx2d.fill();
   }
   ctx2d.globalAlpha = 1;
@@ -427,12 +485,13 @@ function animateBackground(now) {
   bgLast = now;
 
   bgVelocity += (bgTarget - bgVelocity) * Math.min(dt * 1.5, 1);
+  updateLevels(dt);
 
   // Skip drawing once everything has settled to a stop
   if (bgVelocity > 0.002) {
     phase += FLOW_SPEED * bgVelocity * dt;
     drift += DRIFT_SPEED * bgVelocity * dt;
-    stepDots(dt, bgVelocity);
+    stepDots(dt, bgVelocity * (1 + level * 0.8));   // dots surge on the bass
     drawBackground();
   }
 
@@ -538,6 +597,7 @@ function createPlayer(root) {
       if (audio.paused) {
         // Only one song plays at a time
         players.forEach(p => { if (p.root !== root) p.pause(); });
+        hookAudio(audio);
         await audio.play();
       } else {
         audio.pause();
