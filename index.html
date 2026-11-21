@@ -3,16 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Music Player</title>
+<title>Low reactor integrity- subcargo vol.2</title>
 
 <style>
 * { box-sizing: border-box; }
 
+:root { color-scheme: dark; }
+
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f7f7f5;
-  color: #252525;
+  background: #121214;
+  color: #e8e8e6;
   font-family: Arial, sans-serif;
   display: flex;
   flex-direction: column;
@@ -27,29 +29,29 @@ body {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-color: #f7f7f5;
+  background-color: #121214;
   background-image:
-    radial-gradient(circle, rgba(0, 0, 0, 0.10) 1.2px, transparent 1.7px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.09) 1.2px, transparent 1.7px),
     linear-gradient(135deg,
-      rgba(0, 0, 0, 0.045) 25%, transparent 25%,
-      transparent 50%, rgba(0, 0, 0, 0.045) 50%,
-      rgba(0, 0, 0, 0.045) 75%, transparent 75%);
+      rgba(255, 255, 255, 0.035) 25%, transparent 25%,
+      transparent 50%, rgba(255, 255, 255, 0.035) 50%,
+      rgba(255, 255, 255, 0.035) 75%, transparent 75%);
   background-size: 26px 26px, 40px 40px;
 }
 
 .player {
   width: 100%;
   max-width: 620px;
-  background: white;
+  background: #1c1c1f;
   padding: 42px;
-  border: 1px solid #e8e8e5;
+  border: 1px solid #2c2c30;
   border-radius: 16px;
 }
 
 .eyebrow {
   font-size: 11px;
   letter-spacing: 2px;
-  color: #888;
+  color: #9a9aa0;
   text-transform: uppercase;
 }
 
@@ -60,20 +62,20 @@ h1 {
 }
 
 .description {
-  color: #777;
+  color: #a0a0a6;
   line-height: 1.6;
   font-size: 14px;
 }
 
 .divider {
   border: 0;
-  border-top: 1px solid #eee;
+  border-top: 1px solid #2c2c30;
   margin: 30px 0;
 }
 
 .state-label {
   font-size: 12px;
-  color: #888;
+  color: #9a9aa0;
   margin-bottom: 14px;
 }
 
@@ -83,7 +85,7 @@ h1 {
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: #777;
+  color: #a0a0a6;
 }
 
 .timebar span {
@@ -97,35 +99,49 @@ input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: linear-gradient(to right, #292929 var(--fill, 0%), #e8e8e5 var(--fill, 0%));
+  height: 24px;              /* tall hit area so the bar is easy to grab */
+  margin: 0;
+  background: transparent;
   cursor: pointer;
   outline: none;
+  touch-action: none;
 }
 
 input[type="range"]:disabled { cursor: default; opacity: 0.6; }
 
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #e8e8e6 var(--fill, 0%), #38383d var(--fill, 0%));
+}
+
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #e8e8e6 var(--fill, 0%), #38383d var(--fill, 0%));
+}
+
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
   border-radius: 50%;
-  background: #292929;
-  border: 2px solid white;
-  box-shadow: 0 0 0 1px #292929;
+  background: #e8e8e6;
+  border: 2px solid #1c1c1f;
+  box-shadow: 0 0 0 1px #e8e8e6;
 }
 
 input[type="range"]::-moz-range-thumb {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #292929;
-  border: 2px solid white;
-  box-shadow: 0 0 0 1px #292929;
+  background: #e8e8e6;
+  border: 2px solid #1c1c1f;
+  box-shadow: 0 0 0 1px #e8e8e6;
 }
 
-input[type="range"]:focus-visible { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15); }
+input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35); }
 
 .controls {
   display: flex;
@@ -137,8 +153,8 @@ input[type="range"]:focus-visible { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15); }
 
 .play {
   border: none;
-  background: #292929;
-  color: white;
+  background: #e8e8e6;
+  color: #121214;
   border-radius: 30px;
   padding: 13px 25px;
   cursor: pointer;
@@ -151,9 +167,9 @@ input[type="range"]:focus-visible { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15); }
 }
 
 .restart {
-  border: 1px solid #ccc;
-  background: white;
-  color: #333;
+  border: 1px solid #444;
+  background: #1c1c1f;
+  color: #e8e8e6;
   border-radius: 30px;
   padding: 12px 20px;
   cursor: pointer;
@@ -163,12 +179,12 @@ input[type="range"]:focus-visible { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15); }
 
 .status {
   font-size: 12px;
-  color: #777;
+  color: #a0a0a6;
 }
 
 .footer {
   text-align: center;
-  color: #aaa;
+  color: #666;
   font-size: 11px;
   margin: 10px 0 20px;
   letter-spacing: 1px;
@@ -185,45 +201,52 @@ input[type="range"]:focus-visible { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15); }
 
 <div id="bg"></div>
 
-<main class="player">
-  <div class="eyebrow">Music Player</div>
-
-  <h1 id="title">No song loaded</h1>
-
-  <p class="description" id="caption">
-    Add a song in the code and it will show up here.
-  </p>
-
+<!-- ============ PLAYER 1 ============ -->
+<!-- data-file = file name, data-start = seconds into the song to begin at -->
+<main class="player" data-file="meltdown(final).mp3" data-start="0">
+  <div class="eyebrow">Low reactor integrity- subcargo vol.2</div>
+  <h1>Example 1</h1>
+  <p class="description">Press play, and drag the time bar to jump to any part of the song.</p>
   <hr class="divider">
-
   <div class="state-label">TIME</div>
-
   <div class="timebar">
-    <span id="current">0:00</span>
-    <input type="range" id="seek" min="0" max="100" step="0.1" value="0" disabled aria-label="Time bar">
-    <span id="duration">0:00</span>
+    <span class="current">0:00</span>
+    <input type="range" class="seek" min="0" max="100" step="0.1" value="0" disabled aria-label="Time bar">
+    <span class="duration">0:00</span>
   </div>
-
   <div class="controls">
     <div class="buttons">
-      <button class="play" id="play" disabled>▶ Play</button>
-      <button class="restart" id="restart" disabled>↺ Playback</button>
+      <button class="play" disabled>▶ Play</button>
+      <button class="restart" disabled>↺ Playback</button>
     </div>
-    <span class="status" id="status">No song loaded</span>
+    <span class="status">Ready</span>
   </div>
 </main>
 
-<div class="footer">MUSIC PLAYER</div>
+<!-- ============ PLAYER 2 ============ -->
+<main class="player" data-file="buildingnew3.mp3" data-start="0">
+  <div class="eyebrow">build a sub - subcargo vol. 2</div>
+  <h1>Example 2</h1>
+  <p class="description">Press play, and drag the time bar to jump to any part of the song.</p>
+  <hr class="divider">
+  <div class="state-label">TIME</div>
+  <div class="timebar">
+    <span class="current">0:00</span>
+    <input type="range" class="seek" min="0" max="100" step="0.1" value="0" disabled aria-label="Time bar">
+    <span class="duration">0:00</span>
+  </div>
+  <div class="controls">
+    <div class="buttons">
+      <button class="play" disabled>▶ Play</button>
+      <button class="restart" disabled>↺ Playback</button>
+    </div>
+    <span class="status">Ready</span>
+  </div>
+</main>
+
+<div class="footer">LOW REACTOR INTEGRITY- SUBCARGO VOL.2</div>
 
 <script>
-// ---------- ADD YOUR SONGS HERE ----------
-// file = file name (use real .wav or .mp3 files in the same folder)
-// start = seconds into the song to begin at
-const songs = [
-  { title: "Meltdown", caption: "", file: "meltdown(final).mp3", start: 0 },
-  // { title: "Song name", caption: "Artist", file: "song.wav", start: 0 },
-];
-
 // ---------- Moving background ----------
 // Same drifting texture as the adaptive music site.
 // It eases to a stop when nothing is playing and eases back up when music starts.
@@ -253,21 +276,12 @@ function animateBackground(now) {
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (!reduceMotion) requestAnimationFrame(animateBackground);
 
-// ---------- Player ----------
-const audio = new Audio();
-audio.preload = "auto";
+// ---------- Players ----------
+const players = [];
 
-const playBtn = document.getElementById("play");
-const restartBtn = document.getElementById("restart");
-const seek = document.getElementById("seek");
-const currentEl = document.getElementById("current");
-const durationEl = document.getElementById("duration");
-const titleEl = document.getElementById("title");
-const captionEl = document.getElementById("caption");
-const statusEl = document.getElementById("status");
-
-let startAt = 0;
-let dragging = false;
+function updateBackground() {
+  bgTarget = players.some(p => p.isPlaying()) ? 1 : 0;
+}
 
 function fmt(t) {
   if (!isFinite(t)) return "0:00";
@@ -276,91 +290,110 @@ function fmt(t) {
   return m + ":" + s;
 }
 
-function updateFill() {
-  const max = Number(seek.max) || 1;
-  seek.style.setProperty("--fill", (Number(seek.value) / max * 100) + "%");
-}
+function createPlayer(root) {
+  const startAt = Number(root.dataset.start || 0);
 
-function loadSong(song) {
-  startAt = song.start || 0;
-  audio.src = song.file;
-  titleEl.textContent = song.title;
-  captionEl.textContent = song.caption || "";
-  statusEl.textContent = "Ready";
+  const audio = new Audio();
+  audio.preload = "auto";
+  audio.src = root.dataset.file;
+
+  const playBtn = root.querySelector(".play");
+  const restartBtn = root.querySelector(".restart");
+  const seek = root.querySelector(".seek");
+  const currentEl = root.querySelector(".current");
+  const durationEl = root.querySelector(".duration");
+  const statusEl = root.querySelector(".status");
+
+  let dragging = false;
+
+  function updateFill() {
+    const max = Number(seek.max) || 1;
+    seek.style.setProperty("--fill", (Number(seek.value) / max * 100) + "%");
+  }
+
   playBtn.disabled = false;
   restartBtn.disabled = false;
   seek.disabled = false;
 
-  audio.addEventListener("loadedmetadata", function once() {
-    audio.currentTime = startAt;
-    audio.removeEventListener("loadedmetadata", once);
+  audio.addEventListener("error", () => {
+    statusEl.textContent = "Couldn't load: " + audio.currentSrc;
   });
+
+  audio.addEventListener("loadedmetadata", () => {
+    seek.max = audio.duration;
+    durationEl.textContent = fmt(audio.duration);
+    if (startAt > 0 && audio.currentTime === 0) audio.currentTime = startAt;
+    updateFill();
+  });
+
+  audio.addEventListener("timeupdate", () => {
+    if (dragging) return;
+    seek.value = audio.currentTime;
+    currentEl.textContent = fmt(audio.currentTime);
+    updateFill();
+  });
+
+  audio.addEventListener("play", () => {
+    playBtn.textContent = "Ⅱ Pause";
+    statusEl.textContent = "Playing";
+    updateBackground();
+  });
+
+  audio.addEventListener("pause", () => {
+    playBtn.textContent = "▶ Play";
+    if (!audio.ended) statusEl.textContent = "Paused";
+    updateBackground();
+  });
+
+  audio.addEventListener("ended", () => {
+    playBtn.textContent = "▶ Play";
+    statusEl.textContent = "Finished";
+    audio.currentTime = startAt;
+    updateBackground();
+  });
+
+  playBtn.addEventListener("click", async () => {
+    try {
+      if (audio.paused) {
+        // Only one song plays at a time
+        players.forEach(p => { if (p.root !== root) p.pause(); });
+        await audio.play();
+      } else {
+        audio.pause();
+      }
+    } catch (error) {
+      statusEl.textContent = "Audio playback failed";
+      console.error(error);
+    }
+  });
+
+  restartBtn.addEventListener("click", () => {
+    audio.currentTime = startAt;
+    statusEl.textContent = audio.paused ? "Back at the start" : "Playing";
+  });
+
+  // Time bar: drag it and the song follows live
+  seek.addEventListener("pointerdown", () => { dragging = true; });
+  seek.addEventListener("pointerup", () => { dragging = false; });
+  seek.addEventListener("pointercancel", () => { dragging = false; });
+
+  seek.addEventListener("input", () => {
+    const t = Number(seek.value);
+    currentEl.textContent = fmt(t);
+    updateFill();
+    if (isFinite(audio.duration)) audio.currentTime = t;
+  });
+
+  return {
+    root,
+    pause: () => audio.pause(),
+    isPlaying: () => !audio.paused && !audio.ended
+  };
 }
 
-audio.addEventListener("error", () => {
-  statusEl.textContent = "Couldn't load: " + audio.currentSrc;
+document.querySelectorAll(".player").forEach(root => {
+  players.push(createPlayer(root));
 });
-
-audio.addEventListener("loadedmetadata", () => {
-  seek.max = audio.duration;
-  durationEl.textContent = fmt(audio.duration);
-  updateFill();
-});
-
-audio.addEventListener("timeupdate", () => {
-  if (dragging) return;
-  seek.value = audio.currentTime;
-  currentEl.textContent = fmt(audio.currentTime);
-  updateFill();
-});
-
-audio.addEventListener("play", () => {
-  playBtn.textContent = "Ⅱ Pause";
-  statusEl.textContent = "Playing";
-  bgTarget = 1;
-});
-
-audio.addEventListener("pause", () => {
-  playBtn.textContent = "▶ Play";
-  if (!audio.ended) statusEl.textContent = "Paused";
-  bgTarget = 0;
-});
-
-audio.addEventListener("ended", () => {
-  playBtn.textContent = "▶ Play";
-  statusEl.textContent = "Finished";
-  bgTarget = 0;
-  audio.currentTime = startAt;
-});
-
-playBtn.addEventListener("click", async () => {
-  try {
-    if (audio.paused) await audio.play();
-    else audio.pause();
-  } catch (error) {
-    statusEl.textContent = "Audio playback failed";
-    console.error(error);
-  }
-});
-
-restartBtn.addEventListener("click", () => {
-  audio.currentTime = startAt;
-  statusEl.textContent = audio.paused ? "Back at the start" : "Playing";
-});
-
-// Time bar: drag to preview the time, release to jump
-seek.addEventListener("input", () => {
-  dragging = true;
-  currentEl.textContent = fmt(Number(seek.value));
-  updateFill();
-});
-
-seek.addEventListener("change", () => {
-  audio.currentTime = Number(seek.value);
-  dragging = false;
-});
-
-if (songs.length > 0) loadSong(songs[0]);
 </script>
 
 </body>
