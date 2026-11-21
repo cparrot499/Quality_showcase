@@ -23,20 +23,20 @@ body {
   padding: 24px;
 }
 
-/* Moving texture behind everything. It only drifts while music is playing. */
+/* Stripes + dot field behind everything. Both only move while music is playing. */
 #bg {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: -1;
   pointer-events: none;
   background-color: #121214;
-  background-image:
-    radial-gradient(circle, rgba(255, 255, 255, 0.09) 1.2px, transparent 1.7px),
-    linear-gradient(135deg,
-      rgba(255, 255, 255, 0.035) 25%, transparent 25%,
-      transparent 50%, rgba(255, 255, 255, 0.035) 50%,
-      rgba(255, 255, 255, 0.035) 75%, transparent 75%);
-  background-size: 26px 26px, 40px 40px;
+  background-image: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.035) 25%, transparent 25%,
+    transparent 50%, rgba(255, 255, 255, 0.035) 50%,
+    rgba(255, 255, 255, 0.035) 75%, transparent 75%);
+  background-size: 60px 60px;
 }
 
 .player {
@@ -199,7 +199,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 
 <body>
 
-<div id="bg"></div>
+<canvas id="bg"></canvas>
 
 <!-- ============ PLAYER 1 ============ -->
 <!-- data-file = file name, data-start = seconds into the song to begin at -->
@@ -224,7 +224,7 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 </main>
 
 <!-- ============ PLAYER 2 ============ -->
-<main class="player" data-file="buildingnew3.mp3" data-start="0">
+<main class="player" data-file="buildingnew3.wav" data-start="0">
   <div class="eyebrow">build a sub - subcargo vol. 2</div>
   <h1>Example 2</h1>
   <p class="description">Press play, and drag the time bar to jump to any part of the song.</p>
@@ -248,31 +248,92 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 
 <script>
 // ---------- Moving background ----------
-// Same drifting texture as the adaptive music site.
-// It eases to a stop when nothing is playing and eases back up when music starts.
+// Diagonal stripes with a staggered field of dots on top. The dots swell and glow in slow
+// waves, and the stripes and dots slide together. Everything eases to a stop when nothing
+// is playing and eases back up when music starts.
 const bg = document.getElementById("bg");
-const BG_SPEED = 14;               // pixels per second
-const BG_DIRECTION = { x: 1, y: 0.6 };
-let bgTarget = 0;                  // 0 = stopped, 1 = moving
+const ctx2d = bg.getContext("2d");
+const SPACING = 30;                        // distance between dots in a row
+const ROW_HEIGHT = SPACING * 0.866;        // staggered rows (hexagonal pattern)
+const MAX_RADIUS = 3.8;
+const MIN_RADIUS = 0.8;
+const WAVE_SPEED = 1.1;                    // wave speed at full tilt
+const DRIFT_SPEED = 8;                     // pixels per second the field slides
+let bgTarget = 0;                          // 0 = stopped, 1 = moving
 let bgVelocity = 0;
-let bgX = 0, bgY = 0;
+let phase = 0;                             // wave position (only advances while moving)
+let drift = 0;
 let bgLast = performance.now();
+let bgW = 0, bgH = 0;
+
+function resizeBackground() {
+  const dpr = window.devicePixelRatio || 1;
+  bgW = window.innerWidth;
+  bgH = window.innerHeight;
+  bg.width = bgW * dpr;
+  bg.height = bgH * dpr;
+  ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawBackground();
+}
+
+function drawBackground() {
+  ctx2d.clearRect(0, 0, bgW, bgH);
+  ctx2d.fillStyle = "#e8e8e6";
+
+  const ox = drift % SPACING;
+  const oy = (drift * 0.5) % (ROW_HEIGHT * 2);
+
+  // Stripes slide with the dots
+  bg.style.backgroundPosition = drift + "px " + (drift * 0.5) + "px";
+
+  for (let r = -2; r * ROW_HEIGHT + oy < bgH + ROW_HEIGHT; r++) {
+    const y = r * ROW_HEIGHT + oy;
+    const stagger = (r & 1) ? SPACING / 2 : 0;
+
+    for (let x = -SPACING + ox + stagger; x < bgW + SPACING; x += SPACING) {
+      // Two crossing waves so the pattern never looks too regular
+      const w1 = Math.sin(x * 0.011 + y * 0.007 - phase);
+      const w2 = Math.sin(x * 0.005 - y * 0.012 + phase * 0.7);
+      const v = (w1 + w2 + 2) / 4;                       // 0 to 1
+      const radius = MIN_RADIUS + v * v * (MAX_RADIUS - MIN_RADIUS);
+
+      // Soft halo around the dots at the crest of a wave
+      if (v > 0.6) {
+        ctx2d.globalAlpha = (v - 0.6) * 0.35;
+        ctx2d.beginPath();
+        ctx2d.arc(x, y, radius * 2.4, 0, Math.PI * 2);
+        ctx2d.fill();
+      }
+
+      ctx2d.globalAlpha = 0.10 + v * 0.35;
+      ctx2d.beginPath();
+      ctx2d.arc(x, y, radius, 0, Math.PI * 2);
+      ctx2d.fill();
+    }
+  }
+  ctx2d.globalAlpha = 1;
+}
 
 function animateBackground(now) {
   const dt = Math.min((now - bgLast) / 1000, 0.1);
   bgLast = now;
 
-  bgVelocity += (bgTarget * BG_SPEED - bgVelocity) * Math.min(dt * 1.5, 1);
-  bgX += BG_DIRECTION.x * bgVelocity * dt;
-  bgY += BG_DIRECTION.y * bgVelocity * dt;
+  bgVelocity += (bgTarget - bgVelocity) * Math.min(dt * 1.5, 1);
 
-  bg.style.backgroundPosition =
-    bgX + "px " + bgY + "px, " + (bgX * 0.5) + "px " + (bgY * 0.5) + "px";
+  // Skip drawing once everything has settled to a stop
+  if (bgVelocity > 0.002) {
+    phase += WAVE_SPEED * bgVelocity * dt;
+    drift += DRIFT_SPEED * bgVelocity * dt;
+    drawBackground();
+  }
 
   requestAnimationFrame(animateBackground);
 }
 
-// Respect people who ask their device for less motion
+window.addEventListener("resize", resizeBackground);
+resizeBackground();
+
+// Respect people who ask their device for less motion (they get a still background)
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (!reduceMotion) requestAnimationFrame(animateBackground);
 
