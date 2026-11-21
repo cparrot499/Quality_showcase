@@ -244,27 +244,89 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
   </div>
 </main>
 
+<!-- ============ PLAYER 3 ============ -->
+<main class="player" data-file="creatureattack%20-%20subcargo.mp3" data-start="0">
+  <div class="eyebrow">Attack of the bloodworms - subcargo vol. 1</div>
+  <h1>Example 3</h1>
+  <p class="description">Press play, and drag the time bar to jump to any part of the song.</p>
+  <hr class="divider">
+  <div class="state-label">TIME</div>
+  <div class="timebar">
+    <span class="current">0:00</span>
+    <input type="range" class="seek" min="0" max="100" step="0.1" value="0" disabled aria-label="Time bar">
+    <span class="duration">0:00</span>
+  </div>
+  <div class="controls">
+    <div class="buttons">
+      <button class="play" disabled>▶ Play</button>
+      <button class="restart" disabled>↺ Playback</button>
+    </div>
+    <span class="status">Ready</span>
+  </div>
+</main>
+
 <div class="footer">LOW REACTOR INTEGRITY- SUBCARGO VOL.2</div>
 
 <script>
 // ---------- Moving background ----------
-// Diagonal stripes with a staggered field of dots on top. The dots swell and glow in slow
-// waves, and the stripes and dots slide together. Everything eases to a stop when nothing
-// is playing and eases back up when music starts.
+// Diagonal stripes with a field of loose dots drifting through a slowly changing current.
+// The dots bunch up where the current converges and spread out where it opens, so they
+// clump and flow instead of sitting in rows. Everything eases to a stop when nothing is
+// playing and eases back up when music starts.
 const bg = document.getElementById("bg");
 const ctx2d = bg.getContext("2d");
-const SPACING = 30;                        // distance between dots in a row
-const ROW_HEIGHT = SPACING * 0.866;        // staggered rows (hexagonal pattern)
-const MAX_RADIUS = 3.8;
+const AREA_PER_DOT = 2600;                 // bigger = fewer dots
 const MIN_RADIUS = 0.8;
-const WAVE_SPEED = 1.1;                    // wave speed at full tilt
-const DRIFT_SPEED = 8;                     // pixels per second the field slides
+const MAX_RADIUS = 3.6;
+const FLOW_SPEED = 0.35;                   // how fast the current itself changes
+const DRIFT_SPEED = 8;                     // pixels per second the stripes slide
 let bgTarget = 0;                          // 0 = stopped, 1 = moving
 let bgVelocity = 0;
-let phase = 0;                             // wave position (only advances while moving)
+let phase = 0;                             // the current's evolution (only advances while moving)
 let drift = 0;
 let bgLast = performance.now();
 let bgW = 0, bgH = 0;
+let dots = [];
+
+// A smooth, swirling "current": the direction dots head in at any point on the screen
+function flowAngle(x, y) {
+  const a = Math.sin(x * 0.0045 + phase * 0.9)
+          + Math.sin(y * 0.0055 - phase * 0.7)
+          + Math.sin((x + y) * 0.0032 + phase * 0.5)
+          + Math.sin((x - y) * 0.0027 - phase * 0.4);
+  return a * 1.1;                          // roughly -4.4 to 4.4 radians
+}
+
+function makeDots() {
+  const count = Math.max(80, Math.min(900, Math.round(bgW * bgH / AREA_PER_DOT)));
+  dots = [];
+  for (let i = 0; i < count; i++) {
+    const size = Math.random();
+    dots.push({
+      x: Math.random() * bgW,
+      y: Math.random() * bgH,
+      speed: 10 + Math.random() * 22,      // each dot drifts at its own pace
+      radius: MIN_RADIUS + size * size * (MAX_RADIUS - MIN_RADIUS),   // mostly small, a few big
+      alpha: 0.15 + Math.random() * 0.4,
+      twinkle: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+function stepDots(dt, amount) {
+  const margin = 24;
+  for (const d of dots) {
+    const angle = flowAngle(d.x, d.y);
+    d.x += (Math.cos(angle) * d.speed + DRIFT_SPEED * 0.6) * amount * dt;
+    d.y += (Math.sin(angle) * d.speed + DRIFT_SPEED * 0.3) * amount * dt;
+
+    // Wrap around the edges so the field never empties out
+    if (d.x < -margin) d.x += bgW + margin * 2;
+    else if (d.x > bgW + margin) d.x -= bgW + margin * 2;
+    if (d.y < -margin) d.y += bgH + margin * 2;
+    else if (d.y > bgH + margin) d.y -= bgH + margin * 2;
+  }
+}
 
 function resizeBackground() {
   const dpr = window.devicePixelRatio || 1;
@@ -273,6 +335,14 @@ function resizeBackground() {
   bg.width = bgW * dpr;
   bg.height = bgH * dpr;
   ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  makeDots();
+
+  // Let the dots run for a while first so they start out already clumped and flowing
+  for (let i = 0; i < 300; i++) {
+    phase += FLOW_SPEED * 0.1;
+    stepDots(0.1, 1);
+  }
   drawBackground();
 }
 
@@ -280,36 +350,25 @@ function drawBackground() {
   ctx2d.clearRect(0, 0, bgW, bgH);
   ctx2d.fillStyle = "#e8e8e6";
 
-  const ox = drift % SPACING;
-  const oy = (drift * 0.5) % (ROW_HEIGHT * 2);
-
-  // Stripes slide with the dots
+  // Stripes slide along
   bg.style.backgroundPosition = drift + "px " + (drift * 0.5) + "px";
 
-  for (let r = -2; r * ROW_HEIGHT + oy < bgH + ROW_HEIGHT; r++) {
-    const y = r * ROW_HEIGHT + oy;
-    const stagger = (r & 1) ? SPACING / 2 : 0;
+  for (const d of dots) {
+    const glow = 0.75 + 0.25 * Math.sin(phase * 2 + d.twinkle);   // gentle shimmer
+    const alpha = d.alpha * glow;
 
-    for (let x = -SPACING + ox + stagger; x < bgW + SPACING; x += SPACING) {
-      // Two crossing waves so the pattern never looks too regular
-      const w1 = Math.sin(x * 0.011 + y * 0.007 - phase);
-      const w2 = Math.sin(x * 0.005 - y * 0.012 + phase * 0.7);
-      const v = (w1 + w2 + 2) / 4;                       // 0 to 1
-      const radius = MIN_RADIUS + v * v * (MAX_RADIUS - MIN_RADIUS);
-
-      // Soft halo around the dots at the crest of a wave
-      if (v > 0.6) {
-        ctx2d.globalAlpha = (v - 0.6) * 0.35;
-        ctx2d.beginPath();
-        ctx2d.arc(x, y, radius * 2.4, 0, Math.PI * 2);
-        ctx2d.fill();
-      }
-
-      ctx2d.globalAlpha = 0.10 + v * 0.35;
+    // Soft halo on the bigger dots
+    if (d.radius > 2.2) {
+      ctx2d.globalAlpha = alpha * 0.3;
       ctx2d.beginPath();
-      ctx2d.arc(x, y, radius, 0, Math.PI * 2);
+      ctx2d.arc(d.x, d.y, d.radius * 2.4, 0, Math.PI * 2);
       ctx2d.fill();
     }
+
+    ctx2d.globalAlpha = alpha;
+    ctx2d.beginPath();
+    ctx2d.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
+    ctx2d.fill();
   }
   ctx2d.globalAlpha = 1;
 }
@@ -322,8 +381,9 @@ function animateBackground(now) {
 
   // Skip drawing once everything has settled to a stop
   if (bgVelocity > 0.002) {
-    phase += WAVE_SPEED * bgVelocity * dt;
+    phase += FLOW_SPEED * bgVelocity * dt;
     drift += DRIFT_SPEED * bgVelocity * dt;
+    stepDots(dt, bgVelocity);
     drawBackground();
   }
 
