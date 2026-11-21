@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Music Player</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f7f7f5;
+  color: #252525;
+  font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 24px;
+}
+
+/* Moving texture behind everything. It only drifts while music is playing. */
+#bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: #f7f7f5;
+  background-image:
+    radial-gradient(circle, rgba(0, 0, 0, 0.10) 1.2px, transparent 1.7px),
+    linear-gradient(135deg,
+      rgba(0, 0, 0, 0.045) 25%, transparent 25%,
+      transparent 50%, rgba(0, 0, 0, 0.045) 50%,
+      rgba(0, 0, 0, 0.045) 75%, transparent 75%);
+  background-size: 26px 26px, 40px 40px;
+}
+
+.player {
+  width: 100%;
+  max-width: 620px;
+  background: white;
+  padding: 42px;
+  border: 1px solid #e8e8e5;
+  border-radius: 16px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 34px;
+  font-weight: 500;
+  margin: 20px 0 10px;
+}
+
+.description {
+  color: #777;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid #eee;
+  margin: 30px 0;
+}
+
+.state-label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 14px;
+}
+
+/* ---------- Time bar ---------- */
+.timebar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #777;
+}
+
+.timebar span {
+  min-width: 36px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timebar span:last-child { text-align: right; }
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #292929 var(--fill, 0%), #e8e8e5 var(--fill, 0%));
+  cursor: pointer;
+  outline: none;
+}
+
+input[type="range"]:disabled { cursor: default; opacity: 0.6; }
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #292929;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px #292929;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #292929;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px #292929;
+}
+
+input[type="range"]:focus-visible { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15); }
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 28px;
+  gap: 12px;
+}
+
+.play {
+  border: none;
+  background: #292929;
+  color: white;
+  border-radius: 30px;
+  padding: 13px 25px;
+  cursor: pointer;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.restart {
+  border: 1px solid #ccc;
+  background: white;
+  color: #333;
+  border-radius: 30px;
+  padding: 12px 20px;
+  cursor: pointer;
+}
+
+.play:disabled, .restart:disabled { opacity: 0.45; cursor: default; }
+
+.status {
+  font-size: 12px;
+  color: #777;
+}
+
+.footer {
+  text-align: center;
+  color: #aaa;
+  font-size: 11px;
+  margin: 10px 0 20px;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 480px) {
+  .player { padding: 25px; }
+  h1 { font-size: 28px; }
+}
+</style>
+</head>
+
+<body>
+
+<div id="bg"></div>
+
+<main class="player">
+  <div class="eyebrow">Music Player</div>
+
+  <h1 id="title">No song loaded</h1>
+
+  <p class="description" id="caption">
+    Add a song in the code and it will show up here.
+  </p>
+
+  <hr class="divider">
+
+  <div class="state-label">TIME</div>
+
+  <div class="timebar">
+    <span id="current">0:00</span>
+    <input type="range" id="seek" min="0" max="100" step="0.1" value="0" disabled aria-label="Time bar">
+    <span id="duration">0:00</span>
+  </div>
+
+  <div class="controls">
+    <div class="buttons">
+      <button class="play" id="play" disabled>▶ Play</button>
+      <button class="restart" id="restart" disabled>↺ Playback</button>
+    </div>
+    <span class="status" id="status">No song loaded</span>
+  </div>
+</main>
+
+<div class="footer">MUSIC PLAYER</div>
+
+<script>
+// ---------- ADD YOUR SONGS HERE ----------
+// file = file name (use real .wav or .mp3 files in the same folder)
+// start = seconds into the song to begin at
+const songs = [
+  { title: "Meltdown", caption: "", file: "meltdown(final).mp3", start: 0 },
+  // { title: "Song name", caption: "Artist", file: "song.wav", start: 0 },
+];
+
+// ---------- Moving background ----------
+// Same drifting texture as the adaptive music site.
+// It eases to a stop when nothing is playing and eases back up when music starts.
+const bg = document.getElementById("bg");
+const BG_SPEED = 14;               // pixels per second
+const BG_DIRECTION = { x: 1, y: 0.6 };
+let bgTarget = 0;                  // 0 = stopped, 1 = moving
+let bgVelocity = 0;
+let bgX = 0, bgY = 0;
+let bgLast = performance.now();
+
+function animateBackground(now) {
+  const dt = Math.min((now - bgLast) / 1000, 0.1);
+  bgLast = now;
+
+  bgVelocity += (bgTarget * BG_SPEED - bgVelocity) * Math.min(dt * 1.5, 1);
+  bgX += BG_DIRECTION.x * bgVelocity * dt;
+  bgY += BG_DIRECTION.y * bgVelocity * dt;
+
+  bg.style.backgroundPosition =
+    bgX + "px " + bgY + "px, " + (bgX * 0.5) + "px " + (bgY * 0.5) + "px";
+
+  requestAnimationFrame(animateBackground);
+}
+
+// Respect people who ask their device for less motion
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (!reduceMotion) requestAnimationFrame(animateBackground);
+
+// ---------- Player ----------
+const audio = new Audio();
+audio.preload = "auto";
+
+const playBtn = document.getElementById("play");
+const restartBtn = document.getElementById("restart");
+const seek = document.getElementById("seek");
+const currentEl = document.getElementById("current");
+const durationEl = document.getElementById("duration");
+const titleEl = document.getElementById("title");
+const captionEl = document.getElementById("caption");
+const statusEl = document.getElementById("status");
+
+let startAt = 0;
+let dragging = false;
+
+function fmt(t) {
+  if (!isFinite(t)) return "0:00";
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60).toString().padStart(2, "0");
+  return m + ":" + s;
+}
+
+function updateFill() {
+  const max = Number(seek.max) || 1;
+  seek.style.setProperty("--fill", (Number(seek.value) / max * 100) + "%");
+}
+
+function loadSong(song) {
+  startAt = song.start || 0;
+  audio.src = song.file;
+  titleEl.textContent = song.title;
+  captionEl.textContent = song.caption || "";
+  statusEl.textContent = "Ready";
+  playBtn.disabled = false;
+  restartBtn.disabled = false;
+  seek.disabled = false;
+
+  audio.addEventListener("loadedmetadata", function once() {
+    audio.currentTime = startAt;
+    audio.removeEventListener("loadedmetadata", once);
+  });
+}
+
+audio.addEventListener("error", () => {
+  statusEl.textContent = "Couldn't load: " + audio.currentSrc;
+});
+
+audio.addEventListener("loadedmetadata", () => {
+  seek.max = audio.duration;
+  durationEl.textContent = fmt(audio.duration);
+  updateFill();
+});
+
+audio.addEventListener("timeupdate", () => {
+  if (dragging) return;
+  seek.value = audio.currentTime;
+  currentEl.textContent = fmt(audio.currentTime);
+  updateFill();
+});
+
+audio.addEventListener("play", () => {
+  playBtn.textContent = "Ⅱ Pause";
+  statusEl.textContent = "Playing";
+  bgTarget = 1;
+});
+
+audio.addEventListener("pause", () => {
+  playBtn.textContent = "▶ Play";
+  if (!audio.ended) statusEl.textContent = "Paused";
+  bgTarget = 0;
+});
+
+audio.addEventListener("ended", () => {
+  playBtn.textContent = "▶ Play";
+  statusEl.textContent = "Finished";
+  bgTarget = 0;
+  audio.currentTime = startAt;
+});
+
+playBtn.addEventListener("click", async () => {
+  try {
+    if (audio.paused) await audio.play();
+    else audio.pause();
+  } catch (error) {
+    statusEl.textContent = "Audio playback failed";
+    console.error(error);
+  }
+});
+
+restartBtn.addEventListener("click", () => {
+  audio.currentTime = startAt;
+  statusEl.textContent = audio.paused ? "Back at the start" : "Playing";
+});
+
+// Time bar: drag to preview the time, release to jump
+seek.addEventListener("input", () => {
+  dragging = true;
+  currentEl.textContent = fmt(Number(seek.value));
+  updateFill();
+});
+
+seek.addEventListener("change", () => {
+  audio.currentTime = Number(seek.value);
+  dragging = false;
+});
+
+if (songs.length > 0) loadSong(songs[0]);
+</script>
+
+</body>
+</html>
