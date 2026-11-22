@@ -318,8 +318,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 const bg = document.getElementById("bg");
 const ctx2d = bg.getContext("2d");
 const AREA_PER_DOT = 2600;                 // bigger = fewer dots
-const MIN_RADIUS = 0.8;
-const MAX_RADIUS = 3.6;
+const MIN_RADIUS = 1.1;
+const MAX_RADIUS = 4.4;
 const FLOW_SPEED = 0.35;                   // how fast the current itself changes
 const DRIFT_SPEED = 8;                     // pixels per second the stripes slide
 let bgTarget = 0;                          // 0 = stopped, 1 = moving
@@ -346,7 +346,9 @@ const BANDS = 16;
 let audioCtx = null, analyser = null, freqData = null;
 const bands = new Array(BANDS).fill(0);
 let level = 0;                             // overall bass punch, 0 to 1
-let kick = 0, prevLevel = 0;               // sudden bass hits (drum beats) show up here
+let kick = 0, bassAvg = 0;                 // kick spikes on every bass hit (drum beat), then falls away
+const bandAvg = new Array(BANDS).fill(0);  // each slice's recent average loudness
+const hits = new Array(BANDS).fill(0);     // spikes whenever a slice gets suddenly louder than usual
 
 const bandEdges = [0];
 for (let i = 1; i <= BANDS; i++) {
@@ -363,7 +365,7 @@ function hookAudio(audio) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       analyser = audioCtx.createAnalyser();
       analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.6;
+      analyser.smoothingTimeConstant = 0.25;   // low = quick to catch drum hits
       analyser.connect(audioCtx.destination);
       freqData = new Uint8Array(analyser.frequencyBinCount);
     }
@@ -381,6 +383,7 @@ function updateLevels(dt) {
   const listening = analyser && bgTarget === 1;
   if (listening) analyser.getByteFrequencyData(freqData);
 
+  const raw = new Array(BANDS).fill(0);
   for (let i = 0; i < BANDS; i++) {
     let target = 0;
     if (listening) {
@@ -388,16 +391,27 @@ function updateLevels(dt) {
       for (let k = bandEdges[i]; k < bandEdges[i + 1]; k++) sum += freqData[k];
       target = Math.min(1, (sum / (bandEdges[i + 1] - bandEdges[i])) / 255 * 1.3);
     }
-    // Rises fast, falls slowly, so it feels like a pulse rather than flicker
+    raw[i] = target;
+
+    // Smooth loudness (used for the gentle swell and the surge)
     const rate = target > bands[i] ? 30 : 6;
     bands[i] += (target - bands[i]) * (1 - Math.exp(-dt * rate));
+
+    // Hits: how much louder this slice is than it has been lately. Steady sound gives nothing,
+    // a drum or note starting gives a spike that then dies away quickly (the "bounce").
+    bandAvg[i] += (target - bandAvg[i]) * (1 - Math.exp(-dt * 2.5));
+    const flux = target - bandAvg[i] * 1.05;
+    const hit = flux > 0.03 ? Math.min(1, flux * 4.5) : 0;
+    hits[i] = Math.max(hits[i] * Math.exp(-dt * 7), hit);
   }
   level = (bands[0] + bands[1] + bands[2] + bands[3]) / 4;
 
-  // A sudden jump in the bass counts as a beat: it spikes, then dies away quickly
-  const rise = Math.max(0, level - prevLevel);
-  prevLevel = level;
-  kick = Math.min(1, kick * Math.exp(-dt * 6) + rise * 6);
+  // The same idea on the bass alone gives the beat that all the dots share
+  const bassRaw = (raw[0] + raw[1] + raw[2] + raw[3]) / 4;
+  bassAvg += (bassRaw - bassAvg) * (1 - Math.exp(-dt * 2.5));
+  const bassFlux = bassRaw - bassAvg * 1.05;
+  const bassHit = bassFlux > 0.03 ? Math.min(1, bassFlux * 5) : 0;
+  kick = Math.max(kick * Math.exp(-dt * 7), bassHit);
 }
 
 function makeDots() {
@@ -469,8 +483,8 @@ function drawBackground() {
     const py = (((d.y - scrollY) % wrapH) + wrapH) % wrapH - margin;
 
     const glow = 0.75 + 0.25 * Math.sin(phase * 2 + d.twinkle);   // gentle shimmer
-    const pulse = Math.min(1.3, 0.5 * level + 0.5 * bands[d.band] + kick * 0.3);   // how hard the music is hitting this dot
-    const radius = d.radius * (1 + pulse * 2.0);
+    const pulse = Math.min(1.4, 0.2 * level + 0.6 * hits[d.band] + 0.9 * kick);   // how hard the beat is hitting this dot
+    const radius = d.radius * (1 + pulse * 2.4);
     const alpha = Math.min(1, d.alpha * glow * (1 + pulse * 1.8));
 
     // The music also shoves each dot: sideways to its path, with a bit of push along it
