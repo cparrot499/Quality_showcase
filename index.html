@@ -483,18 +483,19 @@ function drawBackground() {
     const py = (((d.y - scrollY) % wrapH) + wrapH) % wrapH - margin;
 
     const glow = 0.75 + 0.25 * Math.sin(phase * 2 + d.twinkle);   // gentle shimmer
-    const pulse = Math.min(1.4, 0.2 * level + 0.6 * hits[d.band] + 0.9 * kick);   // how hard the beat is hitting this dot
-    const radius = d.radius * (1 + pulse * 2.4);
-    const alpha = Math.min(1, d.alpha * glow * (1 + pulse * 1.8));
+    const pulse = Math.min(1.4, 0.6 * hits[d.band] + 0.9 * kick);   // how hard a beat is hitting this dot (not how loud the song is)
+    const playingSize = 1 + bgVelocity * 0.4;                        // bigger while music plays, eases back when it stops
+    const radius = d.radius * playingSize * (1 + pulse * 0.45);
+    const alpha = Math.min(1, d.alpha * glow * (1 + pulse * 0.6));
 
     // The music also shoves each dot: sideways to its path, with a bit of push along it
-    const shove = pulse * 18;
-    const px = d.x + Math.cos(d.angle + Math.PI / 2) * d.side * shove + Math.cos(d.angle) * pulse * 8;
-    const dy = Math.sin(d.angle + Math.PI / 2) * d.side * shove + Math.sin(d.angle) * pulse * 8;
+    const shove = pulse * 5;
+    const px = d.x + Math.cos(d.angle + Math.PI / 2) * d.side * shove + Math.cos(d.angle) * pulse * 2;
+    const dy = Math.sin(d.angle + Math.PI / 2) * d.side * shove + Math.sin(d.angle) * pulse * 2;
 
     // Soft halo on the bigger dots, and on any dot the music is hitting hard
     if (d.radius > 2.2 || pulse > 0.5) {
-      ctx2d.globalAlpha = Math.min(1, alpha * 0.3 + pulse * 0.15);
+      ctx2d.globalAlpha = Math.min(1, alpha * 0.3 + pulse * 0.06);
       ctx2d.beginPath();
       ctx2d.arc(px, py + dy, radius * 2.4, 0, Math.PI * 2);
       ctx2d.fill();
@@ -519,7 +520,7 @@ function animateBackground(now) {
   if (bgVelocity > 0.002) {
     phase += FLOW_SPEED * bgVelocity * dt;
     drift += DRIFT_SPEED * bgVelocity * dt;
-    stepDots(dt, bgVelocity * (1 + level * 2 + kick * 2.5));   // dots surge on the bass and on beats
+    stepDots(dt, bgVelocity * (1 + level * 0.4 + kick * 0.5));   // a small surge on the bass and on beats
     drawBackground();
   }
 
