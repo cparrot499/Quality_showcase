@@ -20,7 +20,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 24px;
-  padding: 24px;
+  padding: 76px 24px 24px;   /* extra room at the top for the fixed badges */
 }
 
 /* Stripes + dot field behind everything. Both only move while music is playing. */
@@ -41,7 +41,12 @@ body {
 
 /* ---------- Top bar ---------- */
 .topbar {
-  width: 100%;
+  position: fixed;           /* stays in the corners while the page scrolls */
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 10;
+  pointer-events: none;      /* the empty space between the badges doesn't block clicks */
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -50,6 +55,7 @@ body {
 }
 
 .badge {
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -241,6 +247,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
 }
 
 @media (max-width: 480px) {
+  body { padding-top: 112px; }   /* the two badges stack on narrow screens */
+  .badge-open { margin-left: auto; }
   .player { padding: 25px; }
   h1 { font-size: 28px; }
 }
