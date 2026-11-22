@@ -95,12 +95,12 @@ body {
   filter: drop-shadow(0 0 4px rgba(61, 220, 132, 0.55));
 }
 
-/* Songs sit in a grid: 3 across on wide screens, 2 on medium, 1 on phones */
+/* Songs sit in a grid: 2 across (3 rows) on wider screens, 1 on phones */
 .songs {
   width: 100%;
-  max-width: 1280px;
+  max-width: 980px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 24px;
 }
 
@@ -110,7 +110,7 @@ body {
   min-width: 0;
   width: 100%;
   background: #1c1c1f;
-  padding: 30px;
+  padding: 34px;
   border: 1px solid #2c2c30;
   border-radius: 16px;
 }
@@ -257,10 +257,6 @@ input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px 
   font-size: 11px;
   margin: 10px 0 20px;
   letter-spacing: 1px;
-}
-
-@media (max-width: 1020px) {
-  .songs { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 660px) {
